@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["./src/*"],
+      "bun:bundle": ["./src/shims/bunBundle.ts"],
+      "bun:ffi": ["./src/shims/bunFfi.ts"]
+    },
+    "types": ["bun-types", "node"]
+  },
+  "include": ["src/**/*", "build.ts"],
+  "exclude": ["node_modules", "dist", "stubs"]
+}

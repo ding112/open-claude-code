@@ -1,0 +1,23 @@
+# Source files
+src/
+stubs/
+
+# Build infrastructure
+build.ts
+create-missing-stubs.ts
+tsconfig.json
+bun.lock
+
+# Dev/IDE
+.git/
+.gitignore
+.cursor/
+.vscode/
+*.md
+!dist/**
+
+# Node
+node_modules/
+
+# Sourcemaps (optional - remove this line to include them)
+dist/*.map

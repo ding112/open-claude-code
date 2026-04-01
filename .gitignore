@@ -1,0 +1,50 @@
+# 构建输出
+dist/
+build/
+out/
+
+# 依赖
+node_modules/
+
+# Bun
+bun.lockb
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志和临时文件
+*.log
+*.tmp
+*.temp
+.cache/
+
+# 测试覆盖率
+coverage/
+
+# 环境配置（如果有敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 打包文件
+*.tgz
+*.tar.gz
+*.zip
+
+# Claude Code 特定
+claude-code-snapshot-*.tgz
+
+# 研究笔记（可选）
+notes/
+research/
