@@ -1,6 +1,7 @@
 export class ColorDiff {
   constructor() {}
   diff() { return []; }
+  render() { return null; }
 }
 
 export class ColorFile {
@@ -8,6 +9,7 @@ export class ColorFile {
     this.content = content;
     this.language = language;
   }
+  render() { return null; }
 }
 
 export function getSyntaxTheme() {
