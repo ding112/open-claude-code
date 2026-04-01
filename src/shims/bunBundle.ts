@@ -44,7 +44,7 @@ export function feature(name: string): boolean {
     IS_LIBC_MUSL: false,
     KAIROS: false,
     KAIROS_BRIEF: false,
-    KAIROS_CHANNELS: false,
+    KAIROS_CHANNELS: true,
     KAIROS_DREAM: false,
     KAIROS_GITHUB_WEBHOOKS: false,
     KAIROS_PUSH_NOTIFICATION: false,

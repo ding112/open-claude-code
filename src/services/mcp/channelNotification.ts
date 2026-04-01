@@ -11,9 +11,8 @@
  * with (the channel's MCP tool, SendUserMessage, or both).
  *
  * feature('KAIROS') || feature('KAIROS_CHANNELS'). Runtime gate tengu_harbor.
- * Requires claude.ai OAuth auth — API key users are blocked until
- * console gets a channelsEnabled admin surface. Teams/Enterprise orgs
- * must explicitly opt in via channelsEnabled: true in managed settings.
+ * Teams/Enterprise orgs must explicitly opt in via channelsEnabled: true in
+ * managed settings.
  */
 
 import type { ServerCapabilities } from '@modelcontextprotocol/sdk/types.js'
@@ -21,7 +20,6 @@ import { z } from 'zod/v4'
 import { type ChannelEntry, getAllowedChannels } from '../../bootstrap/state.js'
 import { CHANNEL_TAG } from '../../constants/xml.js'
 import {
-  getClaudeAIOAuthTokens,
   getSubscriptionType,
 } from '../../utils/auth.js'
 import { lazySchema } from '../../utils/lazySchema.js'
@@ -29,8 +27,6 @@ import { parsePluginIdentifier } from '../../utils/plugins/pluginIdentifier.js'
 import { getSettingsForSource } from '../../utils/settings/settings.js'
 import { escapeXmlAttr } from '../../utils/xml.js'
 import {
-  type ChannelAllowlistEntry,
-  getChannelAllowlist,
   isChannelsEnabled,
 } from './channelAllowlist.js'
 
@@ -115,28 +111,6 @@ export function wrapChannelMessage(
   return `<${CHANNEL_TAG} source="${escapeXmlAttr(serverName)}"${attrs}>\n${content}\n</${CHANNEL_TAG}>`
 }
 
-/**
- * Effective allowlist for the current session. Team/enterprise orgs can set
- * allowedChannelPlugins in managed settings — when set, it REPLACES the
- * GrowthBook ledger (admin owns the trust decision). Undefined falls back
- * to the ledger. Unmanaged users always get the ledger.
- *
- * Callers already read sub/policy for the policy gate — pass them in to
- * avoid double-reading getSettingsForSource (uncached).
- */
-export function getEffectiveChannelAllowlist(
-  sub: ReturnType<typeof getSubscriptionType>,
-  orgList: ChannelAllowlistEntry[] | undefined,
-): {
-  entries: ChannelAllowlistEntry[]
-  source: 'org' | 'ledger'
-} {
-  if ((sub === 'team' || sub === 'enterprise') && orgList) {
-    return { entries: orgList, source: 'org' }
-  }
-  return { entries: getChannelAllowlist(), source: 'ledger' }
-}
-
 export type ChannelGateResult =
   | { action: 'register' }
   | {
@@ -144,11 +118,9 @@ export type ChannelGateResult =
       kind:
         | 'capability'
         | 'disabled'
-        | 'auth'
         | 'policy'
         | 'session'
         | 'marketplace'
-        | 'allowlist'
       reason: string
     }
 
@@ -216,17 +188,6 @@ export function gateChannelServer(
     }
   }
 
-  // OAuth-only. API key users (console) are blocked — there's no
-  // channelsEnabled admin surface in console yet, so the policy opt-in
-  // flow doesn't exist for them. Drop this when console parity lands.
-  if (!getClaudeAIOAuthTokens()?.accessToken) {
-    return {
-      action: 'skip',
-      kind: 'auth',
-      reason: 'channels requires claude.ai authentication (run /login)',
-    }
-  }
-
   // Teams/Enterprise opt-in. Managed orgs must explicitly enable channels.
   // Default OFF — absent or false blocks. Keyed off subscription tier, not
   // "policy settings exist" — a team org with zero configured policy keys
@@ -259,11 +220,7 @@ export function gateChannelServer(
   if (entry.kind === 'plugin') {
     // Marketplace verification: the tag is intent (plugin:slack@anthropic),
     // the runtime name is just plugin:slack:X — could be slack@anthropic or
-    // slack@evil depending on what's installed. Verify they match before
-    // trusting the tag for the allowlist check below. Source is stashed on
-    // the config at addPluginScopeToServers — undefined (non-plugin server,
-    // shouldn't happen for plugin-kind entry) or @-less (builtin/inline)
-    // both fail the comparison.
+    // slack@evil depending on what's installed. Verify they match.
     const actual = pluginSource
       ? parsePluginIdentifier(pluginSource).marketplace
       : undefined
@@ -272,42 +229,6 @@ export function gateChannelServer(
         action: 'skip',
         kind: 'marketplace',
         reason: `you asked for plugin:${entry.name}@${entry.marketplace} but the installed ${entry.name} plugin is from ${actual ?? 'an unknown source'}`,
-      }
-    }
-
-    // Approved-plugin allowlist. Marketplace gate already verified
-    // tag == reality, so this is a pure entry check. entry.dev (per-entry,
-    // not the session-wide bit) bypasses — so accepting the dev dialog for
-    // one entry doesn't leak allowlist-bypass to --channels entries.
-    if (!entry.dev) {
-      const { entries, source } = getEffectiveChannelAllowlist(
-        sub,
-        policy?.allowedChannelPlugins,
-      )
-      if (
-        !entries.some(
-          e => e.plugin === entry.name && e.marketplace === entry.marketplace,
-        )
-      ) {
-        return {
-          action: 'skip',
-          kind: 'allowlist',
-          reason:
-            source === 'org'
-              ? `plugin ${entry.name}@${entry.marketplace} is not on your org's approved channels list (set allowedChannelPlugins in managed settings)`
-              : `plugin ${entry.name}@${entry.marketplace} is not on the approved channels allowlist (use --dangerously-load-development-channels for local dev)`,
-        }
-      }
-    }
-  } else {
-    // server-kind: allowlist schema is {marketplace, plugin} — a server entry
-    // can never match. Without this, --channels server:plugin:foo:bar would
-    // match a plugin's runtime name and register with no allowlist check.
-    if (!entry.dev) {
-      return {
-        action: 'skip',
-        kind: 'allowlist',
-        reason: `server ${entry.name} is not on the approved channels allowlist (use --dangerously-load-development-channels for local dev)`,
       }
     }
   }
