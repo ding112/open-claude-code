@@ -2,14 +2,37 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 沟通语言
+
+**所有交流必须使用中文。** 代码注释、文档说明、技术讨论等均应使用中文撰写。代码本身（变量名、函数名、类型定义等）保持英文。
+
 ## 代码库背景
 
 这是 Claude Code（Anthropic 的 CLI 工具）的**源代码快照**，来源于 npm 包中公开暴露的 source map（2026年3月31日）。该代码库用于教育、防御性安全研究和软件供应链分析。
 
 **关键约束：**
-- 这是一个只读代码快照 —— 没有 `package.json`、`tsconfig.json` 或构建配置文件
-- 无法直接构建、测试或运行此代码
 - 原始代码版权归 Anthropic 所有；这是一个非官方的研究存档
+- `stubs/` 目录包含 Anthropic 内部包的占位实现，用于编译依赖解析
+- `src/shims/` 目录包含 `bun:bundle` 和 `bun:ffi` 的 polyfill 实现
+
+## 构建命令
+
+```bash
+# 安装依赖
+bun install
+
+# 构建
+bun run build.ts
+
+# 运行
+bun dist/cli.js
+```
+
+构建使用自定义 Bun 插件（`build.ts`）处理：
+- `bun:bundle` → `src/shims/bunBundle.ts`（feature flag polyfill，所有 feature 返回 false）
+- `bun:ffi` → `src/shims/bunFfi.ts`（FFI polyfill）
+- `src/*` 路径别名解析
+- 缺失模块自动替换为空 stub
 
 ## 技术栈
 
@@ -29,7 +52,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 入口点
 
-- `src/main.tsx` — Commander.js CLI 解析器和 Ink 渲染器初始化
+- `src/entrypoints/cli.tsx` — CLI 主入口
+- `src/entrypoints/sdk/` — Agent SDK 类型定义
 - `src/screens/REPL.tsx` — 主交互式 REPL 界面
 - `src/screens/Doctor.tsx` — 环境诊断界面
 
@@ -87,9 +111,24 @@ IDE 扩展（VS Code、JetBrains）的双向通信层：
 
 每次工具调用都通过 `src/hooks/toolPermission/` 进行权限检查。模式包括：`default`、`plan`、`bypassPermissions`、`auto`。
 
+## Stub 模块 (`stubs/`)
+
+Anthropic 内部包的占位实现，用于编译时依赖解析：
+- `@ant/claude-for-chrome-mcp` — Chrome MCP 集成
+- `@ant/computer-use-*` — Computer Use 相关模块
+- `@anthropic-ai/foundry-sdk` — Foundry SDK
+- `@anthropic-ai/mcpb` — MCPB 协议
+- `@anthropic-ai/sandbox-runtime` — Sandbox 运行时
+- `*-napi` — Native API 模块（音频、图像处理、颜色差异等）
+
+## Shim 模块 (`src/shims/`)
+
+- `bunBundle.ts` — `bun:bundle` polyfill，所有 feature flags 返回 false
+- `bunFfi.ts` — `bun:ffi` polyfill
+
 ## 特性标志
 
-通过 Bun 的 `bun:bundle` 实现死代码消除：
+通过 Bun 的 `bun:bundle` 实现死代码消除（在 shim 中所有返回 false）：
 
 ```typescript
 import { feature } from 'bun:bundle'
@@ -133,3 +172,7 @@ startKeychainPrefetch()
 ## 环境特定代码
 
 部分代码路径通过 `process.env.USER_TYPE === 'ant'` 控制（Anthropic 内部构建）。这些工具/命令在公开版本中为 null。
+
+## Windows 环境
+
+Git 在 Windows 下会自动转换 LF 到 CRLF，产生 `LF will be replaced by CRLF` 警告，这是预期行为。

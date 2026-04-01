@@ -14,10 +14,9 @@ bun.lock
 .cursor/
 .vscode/
 *.md
-!dist/**
 
 # Node
 node_modules/
 
-# Sourcemaps (optional - remove this line to include them)
-dist/*.map
+# Sourcemaps
+dist/**/*.map

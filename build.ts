@@ -1,6 +1,6 @@
 import type { BunPlugin } from 'bun';
 import { join, resolve, dirname, extname } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs';
 
 const ROOT = import.meta.dir;
 const STUBS_DIR = join(ROOT, 'stubs');
@@ -126,7 +126,6 @@ const result = await Bun.build({
     'MACRO.VERSION_CHANGELOG': JSON.stringify(''),
   },
   plugins: [shimPlugin],
-  banner: '#!/usr/bin/env bun',
 });
 
 if (missingFiles.size > 0) {
@@ -146,6 +145,37 @@ if (!result.success) {
     console.error(log);
   }
   process.exit(1);
+}
+
+// Prepend shebang only to the entry point cli.js, not to chunk files
+const cliPath = join(ROOT, 'dist', 'cli.js');
+if (existsSync(cliPath)) {
+  const content = readFileSync(cliPath, 'utf-8');
+  if (!content.startsWith('#!')) {
+    writeFileSync(cliPath, '#!/usr/bin/env bun\n' + content, 'utf-8');
+    console.log('\nPrepended shebang to dist/cli.js');
+  }
+}
+
+// Copy vendor/ripgrep binaries from official package if available
+const officialPkgRg = join(ROOT, 'node_modules', '@anthropic-ai', 'claude-code', 'vendor', 'ripgrep');
+if (existsSync(officialPkgRg)) {
+  const platforms = ['x64-win32', 'x64-linux', 'x64-darwin', 'arm64-linux', 'arm64-darwin', 'arm64-win32'];
+  for (const plat of platforms) {
+    const binName = plat.includes('win32') ? 'rg.exe' : 'rg';
+    const src = join(officialPkgRg, plat, binName);
+    if (existsSync(src)) {
+      const destDir = join(ROOT, 'dist', 'vendor', 'ripgrep', plat);
+      mkdirSync(destDir, { recursive: true });
+      copyFileSync(src, join(destDir, binName));
+    }
+  }
+  const copying = join(officialPkgRg, 'COPYING');
+  if (existsSync(copying)) {
+    mkdirSync(join(ROOT, 'dist', 'vendor', 'ripgrep'), { recursive: true });
+    copyFileSync(copying, join(ROOT, 'dist', 'vendor', 'ripgrep', 'COPYING'));
+  }
+  console.log('\nCopied vendor/ripgrep binaries to dist/');
 }
 
 console.log(`\nBuild succeeded! ${result.outputs.length} output file(s):`);
