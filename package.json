@@ -4,12 +4,13 @@
   "description": "Claude Code CLI source snapshot build",
   "type": "module",
   "bin": {
-    "claude": "./dist/cli.js"
+    "open-claude": "./dist/cli.js"
   },
   "main": "./dist/cli.js",
   "scripts": {
     "build": "bun run build.ts",
-    "start": "bun dist/cli.js"
+    "start": "bun dist/cli.js",
+    "link-local": "npm run build && npm link"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.1.1",
